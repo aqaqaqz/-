@@ -12,8 +12,8 @@ headers = {
 }
 
 def download(no):
-    response = requests.get('https://xn--9w3b15m8vo.asia/data/json/'+no+"_list.json", cookies=cookies, headers=headers)
     try:
+        response = requests.get('https://hiyobi.me/data/json/'+no+"_list.json", cookies=cookies, headers=headers)
         imgList = json.loads(response.text)
     except:
         print(no + " is not exists!!")
@@ -23,7 +23,7 @@ def download(no):
         os.makedirs(os.path.join(no))
 
     for img in imgList:
-        url = 'https://xn--9w3b15m8vo.asia/data/'+no+'/' + img["name"]
+        url = 'https://hiyobi.me/data/'+no+'/' + img["name"]
 
         cnt = 0
         while True:
