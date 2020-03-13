@@ -1,4 +1,5 @@
 import requests
+import threading
 import random
 import atexit
 import json
@@ -16,36 +17,62 @@ headers = {
 listDomain = "";
 imgDomain = "";
 
-def download(no):
-    try:
-        response = requests.get(listDomain + no + "_list.json", cookies=cookies, headers=headers)
-        imgList = json.loads(response.text)
-    except:
-        print(no + " is not exists!!")
-        return
 
-    if not(os.path.isdir(no)):
-        os.makedirs(os.path.join(no))
+listArr = [];
+def download(id, no):
+    global listArr;
+    listArr.append(0);
+    listArr.append(0);
+    imgList= []
 
+    cnt = 0
+    while True:
+        try:
+            response = requests.get(listDomain + id + "_list.json", cookies=cookies, headers=headers, timeout=5)
+            if response.ok:
+                imgList = json.loads(response.text)
+                break
+        except:
+            cnt+=1
+            if cnt == 3:
+                print(id + " is not exists!!")
+                return
+            else:
+                print("can not find " + id + ". count : " + str(cnt))
+
+    listArr[2*no+1] = len(imgList)
+
+    print("start " + id);
+
+    if not(os.path.isdir(id)):
+        os.makedirs(os.path.join(id))
     for img in imgList:
-        url = imgDomain + no + '/' + img["name"]
+        threading.Thread(target=imgDown, args=(id, img["name"], no)).start();
 
-        cnt = 0
-        while True:
-            response = requests.get(url , cookies=cookies, headers=headers)
+def imgDown(id, imgName, no):
+    url = imgDomain + id + '/' + imgName
+    cnt = 0
+    while True:
+        try:
+            response = requests.get(url , cookies=cookies, headers=headers, timeout=5)
             if response.ok:
                 break
+        except:
             cnt+=1
-            if cnt == 10:
-                print(no + " : " + img["name"] + " is passed...")
+            if cnt == 5:
+                print(id + " : " + imgName + " is passed...")
                 break
             else:
-                print(no + " : " + img["name"] + " is fail...")
+                print(id + " : " + imgName + " is fail... count : " + str(cnt))
 
-        f = open('./' + no + '/' + img["name"], "wb")
-        f.write(response.content)
-        f.close()
-    print(no + " complete!")
+    f = open('./' + id + '/' + imgName, "wb")
+    f.write(response.content)
+    f.close()
+
+    global listArr;
+    listArr[no*2] = listArr[no*2]+1
+    if listArr[no*2]==listArr[no*2+1]:
+        print(id + " complete!")
 
 def main():
     temp = "";
@@ -66,16 +93,20 @@ def main():
     try:
         res = requests.get('http://lsh0872.iptime.org:12345?list=' + temp);
     except:
-        print('init fail...')
+        print('server connect fail...')
         atexit.register(input, 'Press Enter to continue...')
         return;
     global listDomain
     global imgDomain
     listDomain = json.loads(res.text)['listDomain']
     imgDomain = json.loads(res.text)['imgDomain']
-
-    for no in noList:
-        download(no)
+    
+    no = 0
+    global listArr;
+    for id in noList:
+        
+        download(id, no);
+        no = no+1
     atexit.register(input, 'Press Enter to continue...')
 
 main();
