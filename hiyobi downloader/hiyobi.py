@@ -2,6 +2,7 @@ import requests
 import threading
 import random
 import atexit
+import time
 import json
 import os
 import re
@@ -16,7 +17,7 @@ headers = {
 }
 listDomain = "";
 imgDomain = "";
-
+sem = threading.Semaphore(5)
 
 listArr = [];
 def download(id, no):
@@ -24,7 +25,7 @@ def download(id, no):
     listArr.append(0);
     listArr.append(0);
     imgList= []
-
+    
     cnt = 0
     while True:
         try:
@@ -46,10 +47,20 @@ def download(id, no):
 
     if not(os.path.isdir(id)):
         os.makedirs(os.path.join(id))
+
+    th = []    
     for img in imgList:
-        threading.Thread(target=imgDown, args=(id, img["name"], no)).start();
+        time.sleep(0.1)
+        temp = threading.Thread(target=imgDown, args=(id, img["name"], no));
+        temp.start()
+        th.append(temp)
+    for t in th:
+        t.join()
+
 
 def imgDown(id, imgName, no):
+    sem.acquire()    
+
     url = imgDomain + id + '/' + imgName
     cnt = 0
     while True:
@@ -69,10 +80,14 @@ def imgDown(id, imgName, no):
     f.write(response.content)
     f.close()
 
+    print('download : ' + id + " " + imgName);
+
     global listArr;
     listArr[no*2] = listArr[no*2]+1
     if listArr[no*2]==listArr[no*2+1]:
         print(id + " complete!")
+    
+    sem.release()
 
 def main():
     temp = "";
@@ -104,7 +119,6 @@ def main():
     no = 0
     global listArr;
     for id in noList:
-        
         download(id, no);
         no = no+1
     atexit.register(input, 'Press Enter to continue...')
